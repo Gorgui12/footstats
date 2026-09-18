@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-inter: "Inter", system-ui, sans-serif;
+}
+
+body {
+  @apply bg-pitch-950 text-white antialiased;
+}
+
+.container-app {
+  @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
+}
