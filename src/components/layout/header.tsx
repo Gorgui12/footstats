@@ -4,6 +4,7 @@ import { localizedHref, type Locale } from "@/i18n/config";
 import type { Dictionary } from "@/i18n/dictionaries/types";
 import { LocaleSwitcher } from "./locale-switcher";
 import { CountrySwitcher } from "./country-switcher";
+import { MobileNav } from "./mobile-nav";
 import { getPreferredCountryCode } from "@/services/users/country-preference-service";
 
 export async function Header({ locale, dict }: { locale: Locale; dict: Dictionary }) {
@@ -39,14 +40,8 @@ export async function Header({ locale, dict }: { locale: Locale; dict: Dictionar
         </div>
       </div>
 
-      {/* Navigation mobile simple, en bas d'écran */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-white/10 bg-pitch-950/95 py-2 backdrop-blur md:hidden">
-        {MAIN_NAVIGATION.map((item) => (
-          <Link key={item.href} href={localizedHref(locale, item.href)} className="px-3 py-1 text-xs text-white/70">
-            {dict.nav[item.labelKey]}
-          </Link>
-        ))}
-      </nav>
+      {/* Navigation mobile avec icônes, en bas d'écran */}
+      <MobileNav locale={locale} labels={dict.nav} />
     </header>
   );
 }
