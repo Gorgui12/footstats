@@ -1,14 +1,24 @@
 import type { Metadata } from "next";
 import { seoConfig } from "@/config/seo-config";
 import { SeoStatus } from "@/domain/football/enums";
+import { SUPPORTED_LOCALES, localizedHref, type Locale } from "@/i18n/config";
 
 interface BuildMetadataParams {
   title: string;
   description: string;
+  /** Chemin déjà localisé (ex: "/fr/equipes/senegal"), utilisé pour le canonical. */
   path: string;
   seoStatus: SeoStatus;
   imageUrl?: string | null;
+  /**
+   * Fournis avec `locale` pour générer les alternates hreflang
+   * (brief §58/§27) — chemin SANS préfixe de langue (ex: "/equipes/senegal").
+   */
+  unlocalizedPath?: string;
+  locale?: Locale;
 }
+
+const OG_LOCALE: Record<Locale, string> = { fr: "fr_SN", en: "en_US" };
 
 /**
  * Construit les metadata Next.js pour une page dépendant de données.
@@ -21,14 +31,23 @@ export function buildMetadata({
   path,
   seoStatus,
   imageUrl,
+  unlocalizedPath,
+  locale,
 }: BuildMetadataParams): Metadata {
   const url = `${seoConfig.siteUrl}${path}`;
   const shouldIndex = seoStatus === SeoStatus.INDEXABLE;
 
+  const languages =
+    unlocalizedPath !== undefined
+      ? Object.fromEntries(
+          SUPPORTED_LOCALES.map((l) => [l, `${seoConfig.siteUrl}${localizedHref(l, unlocalizedPath)}`]),
+        )
+      : undefined;
+
   return {
     title: `${title} | ${seoConfig.siteName}`,
     description,
-    alternates: { canonical: url },
+    alternates: { canonical: url, languages },
     robots: {
       index: shouldIndex,
       follow: shouldIndex,
@@ -38,7 +57,7 @@ export function buildMetadata({
       description,
       url,
       siteName: seoConfig.siteName,
-      locale: seoConfig.defaultLocale,
+      locale: locale ? OG_LOCALE[locale] : seoConfig.defaultLocale,
       type: "website",
       images: imageUrl ? [{ url: imageUrl }] : undefined,
     },

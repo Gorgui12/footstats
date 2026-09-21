@@ -30,10 +30,13 @@
 - Disclosure, pages légales, restrictions géographiques.
 - Reste strictement séparée du cœur football (visuellement et techniquement).
 
-## Phase F — Multi-pays / Multi-langue
-- Activation de pays supplémentaires (Côte d'Ivoire, Mali, Burkina Faso, Guinée, Bénin, Togo) via `config/countries.ts`.
-- Ajout de langues (anglais, portugais) via le système i18n déjà en place.
-- Extension vers l'Afrique anglophone (Nigeria, Ghana, Kenya, Afrique du Sud).
+## Phase F — Multi-pays / Multi-langue (EN COURS)
+- [x] Routage multi-langue réel (`/fr`, `/en`) avec dictionnaire de traduction, sélecteur de langue, hreflang SEO.
+- [x] Côte d'Ivoire et Mali activés comme préférences d'affichage (fuseau horaire, sélecteur de pays) — sans données de compétitions réelles pour ces pays (voir DECISIONS.md D12).
+- [ ] Burkina Faso, Guinée, Bénin, Togo (même traitement).
+- [ ] Portugais (nouveau fichier dictionnaire, cf. `src/i18n/dictionaries/`).
+- [ ] Extension vers l'Afrique anglophone (Nigeria, Ghana, Kenya, Afrique du Sud) — l'anglais est déjà prêt côté i18n, il manque les pays + une source de données.
+- [ ] Un fournisseur de données couvrant réellement les compétitions ouest-africaines (recherche en cours côté produit, en plus de football-data.org qui ne couvre que l'Europe/international).
 
 ## Phase G — Mobile
 - Application native réutilisant les services métier existants (aucune duplication de logique).

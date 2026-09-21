@@ -1,13 +1,14 @@
 import { toggleFavoriteAction } from "@/app/actions/favorites";
 import { FavoriteEntityType } from "@/domain/football/enums";
 import { cn } from "@/lib/utils/cn";
+import type { Dictionary } from "@/i18n/dictionaries/types";
 
 interface FavoriteButtonProps {
   entityType: FavoriteEntityType;
   entityId: string;
   isFavorite: boolean;
   redirectPath: string;
-  label?: string;
+  dict: Dictionary;
 }
 
 /**
@@ -15,7 +16,7 @@ interface FavoriteButtonProps {
  * sans JavaScript côté client, conformément à l'approche mobile-first et
  * peu coûteuse du MVP (pas de state client superflu).
  */
-export function FavoriteButton({ entityType, entityId, isFavorite, redirectPath, label }: FavoriteButtonProps) {
+export function FavoriteButton({ entityType, entityId, isFavorite, redirectPath, dict }: FavoriteButtonProps) {
   return (
     <form action={toggleFavoriteAction}>
       <input type="hidden" name="entityType" value={entityType} />
@@ -32,7 +33,7 @@ export function FavoriteButton({ entityType, entityId, isFavorite, redirectPath,
         )}
       >
         <span>{isFavorite ? "★" : "☆"}</span>
-        {label ?? (isFavorite ? "Dans mes favoris" : "Ajouter aux favoris")}
+        {isFavorite ? dict.favoriteButton.added : dict.favoriteButton.add}
       </button>
     </form>
   );

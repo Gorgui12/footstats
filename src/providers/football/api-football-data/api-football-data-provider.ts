@@ -55,27 +55,12 @@ export class ApiFootballDataProvider implements FootballProvider {
 
   constructor(private readonly config: ApiFootballDataProviderConfig) {}
 
-  // Plan Free : l'écart entre dateFrom et dateTo ne doit pas dépasser 10
-  // jours (sinon le serveur répond 400). On garde une marge (9 jours).
-  private static readonly MAX_DATE_SPAN_DAYS = 9;
-
-  private static clampDateWindow(dateFrom: string, dateTo: string): { dateFrom: string; dateTo: string } {
-    const from = new Date(`${dateFrom}T00:00:00Z`).getTime();
-    const to = new Date(`${dateTo}T00:00:00Z`).getTime();
-    if (to - from <= ApiFootballDataProvider.MAX_DATE_SPAN_DAYS * 86_400_000) {
-      return { dateFrom, dateTo };
-    }
-    const clamped = new Date(from + ApiFootballDataProvider.MAX_DATE_SPAN_DAYS * 86_400_000);
-    return { dateFrom, dateTo: clamped.toISOString().slice(0, 10) };
-  }
-
   private async fetchMatches(params: MatchQuery): Promise<FdMatch[]> {
     // Un seul appel couvre toutes les compétitions souscrites — bien plus
     // économe en quota que d'interroger chaque compétition séparément.
     const dateFrom = params.dateFrom ?? new Date(Date.now() - 3 * 86_400_000).toISOString().slice(0, 10);
-    const dateTo = params.dateTo ?? new Date(Date.now() + 6 * 86_400_000).toISOString().slice(0, 10);
-    const { dateFrom: from, dateTo: to } = ApiFootballDataProvider.clampDateWindow(dateFrom, dateTo);
-    const path = `/matches?dateFrom=${from}&dateTo=${to}`;
+    const dateTo = params.dateTo ?? new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    const path = `/matches?dateFrom=${dateFrom}&dateTo=${dateTo}`;
     const response = await fetchFootballData<FdMatchesResponse>(path, this.config.apiKey, MATCHES_TTL_MS);
     return response.matches;
   }

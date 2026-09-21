@@ -10,14 +10,27 @@ import {
   InMemoryNotificationPreferenceRepository,
   InMemoryUserRepository,
 } from "./in-memory/in-memory-user-repositories";
+import { loadEntities, persistEntity, type EntityKind } from "@/db/sqlite";
+import type { Competition, Match, Player, Standing, Team } from "@/domain/football/types";
 
 /**
  * Point d'entrée unique pour obtenir les repositories actifs — même
- * principe que config/football-provider.ts. Aujourd'hui : implémentation
- * en mémoire. Le jour où PostgreSQL est provisionné, ce fichier bascule
- * vers des repositories Postgres (implémentant les mêmes interfaces) sans
- * qu'aucun service n'ait à changer.
+ * principe que config/football-provider.ts.
+ *
+ * Les repositories football (teams/players/competitions/matches/standings)
+ * restent la source de lecture en mémoire, mais écrivent en write-through
+ * dans SQLite (src/db/sqlite.ts) et sont réhydratés au démarrage : les
+ * données survivent aux redémarrages et les pages s'affichent sans
+ * re-synchronisation immédiate de l'API (voir DECISIONS.md D14).
+ *
+ * Les repositories utilisateur (users/favorites/preferences) ne sont pas
+ * persistés — ce sont des données locales au serveur, hors scope API.
  */
+
+function persist(kind: EntityKind) {
+  return (id: string, payload: unknown): void => persistEntity(kind, id, payload);
+}
+
 const globalForRepos = globalThis as unknown as {
   __footstatsRepos?: {
     teams: InMemoryTeamRepository;
@@ -32,12 +45,27 @@ const globalForRepos = globalThis as unknown as {
 };
 
 function createRepositories() {
+  const teams = new InMemoryTeamRepository(persist("teams"));
+  const players = new InMemoryPlayerRepository(persist("players"));
+  const competitions = new InMemoryCompetitionRepository(persist("competitions"));
+  const matches = new InMemoryMatchRepository(persist("matches"));
+  const standings = new InMemoryStandingRepository(persist("standings"));
+
+  // Réhydratation depuis la base SQLite : les données synchronisées à la
+  // session précédente sont disponibles immédiatement, même avant le
+  // premier appel à l'API (utile aussi quand le quota est atteint).
+  teams.seed(loadEntities<Team>("teams"));
+  players.seed(loadEntities<Player>("players"));
+  competitions.seed(loadEntities<Competition>("competitions"));
+  matches.seed(loadEntities<Match>("matches"));
+  standings.seed(loadEntities<Standing>("standings"));
+
   return {
-    teams: new InMemoryTeamRepository(),
-    players: new InMemoryPlayerRepository(),
-    competitions: new InMemoryCompetitionRepository(),
-    matches: new InMemoryMatchRepository(),
-    standings: new InMemoryStandingRepository(),
+    teams,
+    players,
+    competitions,
+    matches,
+    standings,
     users: new InMemoryUserRepository(),
     favorites: new InMemoryFavoriteRepository(),
     notificationPreferences: new InMemoryNotificationPreferenceRepository(),

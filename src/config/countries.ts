@@ -29,7 +29,7 @@ export const COUNTRIES: Record<string, CountryConfig> = {
     timezone: "Africa/Abidjan",
     currency: "XOF",
     defaultLanguage: "fr",
-    isLaunched: false,
+    isLaunched: true,
   },
   ML: {
     id: "ML",
@@ -38,7 +38,7 @@ export const COUNTRIES: Record<string, CountryConfig> = {
     timezone: "Africa/Bamako",
     currency: "XOF",
     defaultLanguage: "fr",
-    isLaunched: false,
+    isLaunched: true,
   },
   BF: {
     id: "BF",

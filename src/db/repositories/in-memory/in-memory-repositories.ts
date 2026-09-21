@@ -8,23 +8,28 @@ import type {
 } from "../interfaces";
 
 /**
- * Implémentation en mémoire — utilisée en développement et tant que
- * l'infrastructure PostgreSQL réelle n'est pas provisionnée dans cet
- * environnement. Respecte exactement les interfaces de `interfaces.ts`,
- * donc remplaçable par une implémentation Postgres/Drizzle sans changer un
- * seul appelant (services/football/*).
- *
- * Ces repositories sont des singletons process-local : les données ne
- * survivent pas à un redémarrage du serveur. C'est acceptable en dev car
- * elles sont resynchronisées depuis le provider à chaque appel de service
- * (voir services/football/sync-service.ts).
+ * Implémentation en mémoire — chemin de lecture unique (rapide) ; la
+ * durabilité est assurée par un write-through vers SQLite (src/db/sqlite.ts)
+ * branché via `onPersist`, et par la réhydratation au démarrage via
+ * `seed()` (voir repositories/index.ts et DECISIONS.md D14). Respecte
+ * exactement les interfaces de `interfaces.ts`, donc remplaçable par une
+ * implémentation Postgres sans changer un seul appelant.
  */
+
+export type EntityPersister = (id: string, payload: unknown) => void;
 
 export class InMemoryTeamRepository implements TeamRepository {
   private readonly byId = new Map<string, Team>();
 
+  constructor(private readonly onPersist: EntityPersister = () => {}) {}
+
+  seed(teams: Team[]): void {
+    for (const team of teams) this.byId.set(team.id, team);
+  }
+
   async upsert(team: Team): Promise<void> {
     this.byId.set(team.id, team);
+    this.onPersist(team.id, team);
   }
   async findById(id: string): Promise<Team | null> {
     return this.byId.get(id) ?? null;
@@ -43,8 +48,15 @@ export class InMemoryTeamRepository implements TeamRepository {
 export class InMemoryPlayerRepository implements PlayerRepository {
   private readonly byId = new Map<string, Player>();
 
+  constructor(private readonly onPersist: EntityPersister = () => {}) {}
+
+  seed(players: Player[]): void {
+    for (const player of players) this.byId.set(player.id, player);
+  }
+
   async upsert(player: Player): Promise<void> {
     this.byId.set(player.id, player);
+    this.onPersist(player.id, player);
   }
   async findById(id: string): Promise<Player | null> {
     return this.byId.get(id) ?? null;
@@ -64,8 +76,15 @@ export class InMemoryPlayerRepository implements PlayerRepository {
 export class InMemoryCompetitionRepository implements CompetitionRepository {
   private readonly byId = new Map<string, Competition>();
 
+  constructor(private readonly onPersist: EntityPersister = () => {}) {}
+
+  seed(competitions: Competition[]): void {
+    for (const competition of competitions) this.byId.set(competition.id, competition);
+  }
+
   async upsert(competition: Competition): Promise<void> {
     this.byId.set(competition.id, competition);
+    this.onPersist(competition.id, competition);
   }
   async findById(id: string): Promise<Competition | null> {
     return this.byId.get(id) ?? null;
@@ -81,8 +100,15 @@ export class InMemoryCompetitionRepository implements CompetitionRepository {
 export class InMemoryMatchRepository implements MatchRepository {
   private readonly byId = new Map<string, Match>();
 
+  constructor(private readonly onPersist: EntityPersister = () => {}) {}
+
+  seed(matches: Match[]): void {
+    for (const match of matches) this.byId.set(match.id, match);
+  }
+
   async upsert(match: Match): Promise<void> {
     this.byId.set(match.id, match);
+    this.onPersist(match.id, match);
   }
   async findById(id: string): Promise<Match | null> {
     return this.byId.get(id) ?? null;
@@ -118,13 +144,23 @@ export class InMemoryMatchRepository implements MatchRepository {
 export class InMemoryStandingRepository implements StandingRepository {
   private readonly byKey = new Map<string, Standing>();
 
+  constructor(private readonly onPersist: EntityPersister = () => {}) {}
+
   private key(s: Pick<Standing, "competitionId" | "seasonId" | "teamId">): string {
     return `${s.competitionId}:${s.seasonId}:${s.teamId}`;
   }
 
-  async upsertMany(standings: Standing[]): Promise<void> {
+  seed(standings: Standing[]): void {
     for (const s of standings) {
       this.byKey.set(this.key(s), s);
+    }
+  }
+
+  async upsertMany(standings: Standing[]): Promise<void> {
+    for (const s of standings) {
+      const key = this.key(s);
+      this.byKey.set(key, s);
+      this.onPersist(key, s);
     }
   }
   async findByCompetitionAndSeason(competitionId: string, seasonId: string): Promise<Standing[]> {

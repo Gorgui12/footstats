@@ -1,5 +1,6 @@
 import { getFootballProvider } from "@/config/football-provider";
 import { repositories } from "@/db/repositories";
+import { getLastSyncedAt, setLastSyncedAt } from "@/db/sqlite";
 import {
   normalizeCompetition,
   normalizeMatch,
@@ -22,7 +23,12 @@ import {
  * (jusqu'à une dizaine de compétitions distinctes d'un coup).
  */
 const SYNC_INTERVAL_MS = 45_000;
-let lastSyncedAt = 0;
+// L'horodatage de la dernière sync est persisté en SQLite : après un
+// redémarrage du serveur, on évite de re-frapper le provider (à quota)
+// tant que les données restaurées de la base sont encore considérées
+// fraîches. Sans base (SQLite indisponible), on retombe sur 0 (sync au
+// premier appel, comportement d'origine).
+let lastSyncedAt = getLastSyncedAt();
 let syncInFlight: Promise<void> | null = null;
 
 export async function ensureSynced(): Promise<void> {
@@ -32,6 +38,7 @@ export async function ensureSynced(): Promise<void> {
 
   syncInFlight = performSync().finally(() => {
     lastSyncedAt = Date.now();
+    setLastSyncedAt(lastSyncedAt);
     syncInFlight = null;
   });
   return syncInFlight;
@@ -40,11 +47,27 @@ export async function ensureSynced(): Promise<void> {
 async function performSync(): Promise<void> {
   const provider = getFootballProvider();
 
-  const [rawTeams, rawCompetitions, rawMatches] = await Promise.all([
-    provider.getTeams({}),
-    provider.getCompetitions(),
-    provider.getMatches({}),
-  ]);
+  // Les fournisseurs à quota (football-data.org 10 req/min, API-FOOTBALL
+  // 100 req/j + 10/min) peuvent répondre temporairement en erreur. On ne
+  // veut pas faire tomber les pages en 500 : on garde les dernières
+  // données connues en repository (qui sert déjà de cache) et on logge.
+  const rawTeams =
+    (await provider.getTeams({}).catch((error) => {
+      console.error("[sync-service] getTeams échoué, conservation des données en cache.", error);
+      return [] as Awaited<ReturnType<typeof provider.getTeams>>;
+    })) ?? [];
+
+  const rawCompetitions =
+    (await provider.getCompetitions().catch((error) => {
+      console.error("[sync-service] getCompetitions échoué, conservation des données en cache.", error);
+      return [] as Awaited<ReturnType<typeof provider.getCompetitions>>;
+    })) ?? [];
+
+  const rawMatches =
+    (await provider.getMatches({}).catch((error) => {
+      console.error("[sync-service] getMatches échoué, conservation des données en cache.", error);
+      return [] as Awaited<ReturnType<typeof provider.getMatches>>;
+    })) ?? [];
 
   const teamNameByExternalId = new Map(rawTeams.map((t) => [t.externalId, t.name]));
 
@@ -64,7 +87,11 @@ async function performSync(): Promise<void> {
     );
   }
 
-  const rawPlayers = await provider.getPlayers({});
+  const rawPlayers =
+    (await provider.getPlayers({}).catch((error) => {
+      console.error("[sync-service] getPlayers échoué, conservation des données en cache.", error);
+      return [] as Awaited<ReturnType<typeof provider.getPlayers>>;
+    })) ?? [];
   for (const rawPlayer of rawPlayers) {
     await repositories.players.upsert(normalizePlayer(provider.name, rawPlayer));
   }

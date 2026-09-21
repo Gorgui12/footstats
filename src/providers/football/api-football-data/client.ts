@@ -1,5 +1,5 @@
 import { TtlCache } from "@/lib/utils/ttl-cache";
-import { SlidingWindowRateLimiter } from "./rate-limiter";
+import { SlidingWindowRateLimiter } from "@/lib/utils/rate-limiter";
 
 const BASE_URL = "https://api.football-data.org/v4";
 
